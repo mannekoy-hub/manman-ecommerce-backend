@@ -19,7 +19,8 @@ function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
   if (!token) {
     return res.status(401).json({ message: "No token provided" });
   }
-
+ 
+  
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret) {

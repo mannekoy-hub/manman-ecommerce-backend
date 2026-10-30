@@ -2,13 +2,26 @@ import express from "express";
 import multer from "multer";
 import prisma from "../lib/prismaClient.ts";
 
+
+const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
 //== { Creates a mini-map that holds only the product routes. }====//
 const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(), //={ keeps the uploaded file in RAM as  Buffer(req.file.buffer) instead of saving it to a folder. }=##
-
   limits: { fileSize: 1 * 1024 * 1024 }, // 1 MB
+
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("INVALID_FILE_TYPE"));
+    }
+    //This is a gatekeeper function. Multer runs it once for every file in an upload, and it decides: accept this file or reject it
+  },
+
 });
+
 //==================================================##################
 
 //===={ this code  will let the typescript know that the mutler adds a file property to req. } ======//
@@ -101,24 +114,30 @@ router.get(
 
     res.set("Content-Type", product.image_type ?? "image/jpeg"); //sets the content-type header so the browser knows how to display the bytes. if image_type is somehow null, it falls back to "image/jpeg"
 
-    res.send(Buffer.from(product.image_data));/*Converts the stored bytes back into a Node Buffer and sends them as the response body. Because of this, you can use <img src="/products/5/image" /> directly in your frontend. */
+      res.set("Cache-Control", "public, max-age=3600");
+
+    res.send(
+      Buffer.from(product.image_data),
+    ); /*Converts the stored bytes back into a Node Buffer and sends them as the response body. Because of this, you can use <img src="/products/5/image" /> directly in your frontend. */
   },
 );
 //==========================================================####################
 
 //==========================================================####################
 // PATCH /products/:id/image: attach or replace the image of an existing product
+
 router.patch(
   "/:id/image",
   upload.single("image"),
   async (req: ProductUploadRequest, res: express.Response) => {
-    const id = Number(req.params.id);
+    const id = Number(req.params.id); //patch means "partially update an existing resourse." the mutler middleware runs again for the "image" field. The URL's id is converted to a number once and reused.
 
     if (!req.file) {
       res
         .status(400)
         .json({ error: "Image file is required (field name: image)" });
       return;
+      //if no file arrived, reply 400.
     }
 
     try {
@@ -130,15 +149,42 @@ router.patch(
         },
         select: { id: true, name: true, image_type: true },
       });
-      res.json(product);
-    } catch (error) {
-      if ((error as { code?: string }).code === "P2025") {
+      res.json(product); //Inside try, Prisma updates the row with that id (SQL: UPDATE products SET ... WHERE id = ...), overwriting any previous image. It returns a small summary without the bytes, which res.json sends back with status 200.
+
+    } catch (error: unknown) {
+      const prismaError = error as { code?: string };
+      if (prismaError.code === "P2025") {
         res.status(404).json({ error: "Product not found" });
         return;
       }
-      throw error;
+      throw error; // update throws an error if the row doesn't exist.
     }
   },
+);
+
+
+// Error handler for upload problems (must come after the routes)
+router.use(
+  (err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof multer.MulterError) {
+      const multerError = err as { code?: string; message?: string };
+
+      if (multerError.code === "LIMIT_FILE_SIZE") {
+        res.status(413).json({ error: "Image is too large. Maximum size is 1 MB." });
+        return;
+      }
+
+      res.status(400).json({ error: multerError.message ?? "Upload failed." });
+      return;
+    }
+
+    if (err instanceof Error && err.message === "INVALID_FILE_TYPE") {
+      res.status(415).json({ error: "Only PNG, JPEG, WebP, or GIF images are allowed." });
+      return;
+    }
+
+    next(err);
+  }
 );
 
 export default router;
