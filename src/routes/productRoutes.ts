@@ -27,6 +27,7 @@ const upload = multer({
 //===={ this code  will let the typescript know that the mutler adds a file property to req. } ======//
 interface ProductUploadRequest extends express.Request {
   //={ extends express.Request means it has everything a normal request has, plus more. }=##
+
   file?: {
     //=={ this line is optional because the client may send no file. }==#
     buffer: Buffer; //=={ holds the raw bytes of the image. }==#
@@ -163,28 +164,5 @@ router.patch(
 );
 
 
-// Error handler for upload problems (must come after the routes)
-router.use(
-  (err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (err instanceof multer.MulterError) {
-      const multerError = err as { code?: string; message?: string };
-
-      if (multerError.code === "LIMIT_FILE_SIZE") {
-        res.status(413).json({ error: "Image is too large. Maximum size is 1 MB." });
-        return;
-      }
-
-      res.status(400).json({ error: multerError.message ?? "Upload failed." });
-      return;
-    }
-
-    if (err instanceof Error && err.message === "INVALID_FILE_TYPE") {
-      res.status(415).json({ error: "Only PNG, JPEG, WebP, or GIF images are allowed." });
-      return;
-    }
-
-    next(err);
-  }
-);
 
 export default router;
