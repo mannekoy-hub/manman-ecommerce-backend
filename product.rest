@@ -1,0 +1,15 @@
+@baseUrl = http://localhost:5010
+
+### Get all products
+GET {{baseUrl}}/products
+
+### Upload image to product 1
+PATCH {{baseUrl}}/products/1/image
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="image"; filename="powerbank.jpg"
+Content-Type: image/jpeg
+
+< ./powerbank.jpg
+------Boundary--
