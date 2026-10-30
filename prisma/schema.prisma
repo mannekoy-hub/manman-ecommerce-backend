@@ -12,12 +12,6 @@ model categories {
   products products[]
 }
 
-///Admin Role
-enum Role {
-  USER
-  ADMIN
-}
-
 model User {
   id       Int    @id @default(autoincrement())
   username String @unique
@@ -46,4 +40,10 @@ model products {
   category_id    Int?
   created_at     DateTime    @default(now()) @db.Timestamptz(6)
   categories     categories? @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+}
+
+/// Admin Role
+enum Role {
+  USER
+  ADMIN
 }
