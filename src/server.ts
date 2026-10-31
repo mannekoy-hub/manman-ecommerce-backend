@@ -8,7 +8,7 @@ import todoRoutes from "./routes/todoRoutes.ts";
 import productRoutes from "./routes/productRoutes.ts";
 
 const app = express();
-const PORT = process.env.PORT || 5010;
+const PORT = Number(process.env.PORT) || 5010;
 
 app.use(cors());        
 app.use(express.json()); 
