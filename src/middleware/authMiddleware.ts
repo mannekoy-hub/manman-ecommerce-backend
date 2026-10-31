@@ -20,6 +20,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction): void {
     return; // Do not continue with a badly formatted header.
   } // Finish checking the header format.
 
+
   const token = parts[1]; // Keep the token part for verification.
   const jwtSecret = process.env.JWT_SECRET; // Read the secret used to sign trusted tokens.
 
@@ -29,8 +30,8 @@ function authMiddleware(req: Request, res: Response, next: NextFunction): void {
 
     res.status(500).json({ message: "Server configuration error" }); // Give the user a general server error.
 
-    return; // Do not try to verify a token without a secret.
-  } // Finish checking the secret.
+    return; 
+  }
 
   let decoded: string | jwt.JwtPayload; // Store the verified token data or its plain-text form.
 
@@ -42,32 +43,35 @@ function authMiddleware(req: Request, res: Response, next: NextFunction): void {
 
       res.status(401).json({ message: "Token expired" }); // Tell the user they need a fresh token.
 
-      return; // Stop after sending the expiry response.
-    } // Finish checking for an expired token.
+      return; 
+    } 
 
     res.status(401).json({ message: "Invalid token" }); // Reject tokens that are damaged or not trusted.
 
-    return; // Do not continue to the route.
-  } // Finish token verification.
+    return;
+  } 
 
   if (typeof decoded === "string") { // A plain-text token does not contain the user ID we need.
 
     res.status(401).json({ message: "Invalid token payload" }); // Reject a token without an object payload.
 
-    return; // Do not continue without a user ID.
-  } // Finish checking the token payload type.
+    return;
+  }
 
   const userId = decoded.id; // Read the user ID saved in the token.
 
   if (typeof userId !== "string" && typeof userId !== "number") { // Make sure the ID is a simple string or number.
 
     res.status(401).json({ message: "Invalid token payload" }); // Reject a missing or unusable user ID.
-    
-    return; // Do not continue with an invalid user ID.
-  } // Finish checking the user ID.
+
+    return; 
+  }
 
   req.userId = userId; // Save the checked ID so the route can use it.
   next(); // Allow the request to continue to its route.
-} // Finish the authentication middleware.
+} 
 
 export default authMiddleware; // Make the middleware available to the routes.
+
+//auth middleware make sure that the users token is trusted, make sure the user with a valid login token can reach protected routes.
+// tells thoes routes which user is making the request.
