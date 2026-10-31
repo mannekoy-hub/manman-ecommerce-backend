@@ -1,40 +1,73 @@
-import { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
+import { NextFunction, Request, Response } from "express"; // Use Express types for the request, response, and next step.
+import jwt from "jsonwebtoken"; // Use JWT tools to check whether a token is trusted.
 
-interface AuthRequest extends Request {
-  userId?: string | number;
-}
+function authMiddleware(req: Request, res: Response, next: NextFunction): void { // Check a request's token before its route runs.
 
-function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
+  const authHeader = req.headers.authorization; // Read the Authorization header sent by the user.
 
-  if (!authHeader || typeof authHeader !== "string") {
-    return res.status(401).json({ message: "No token provided" });
-  }
+  if (!authHeader) { // Stop when the request has no Authorization header.
 
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7).trim()
-    : authHeader.trim();
+    res.status(401).json({ message: "No token provided" }); // Tell the user they need to send a token.
 
-  if (!token) {
-    return res.status(401).json({ message: "No token provided" });
-  }
- 
-  
-  const jwtSecret = process.env.JWT_SECRET;
+    return; // Do not continue to the route.
+  } // Finish checking for a missing header.
 
-  if (!jwtSecret) {
-    return res.status(500).json({ message: "JWT secret is not configured" });
-  }
+  const parts = authHeader.trim().split(/\s+/); // Split the header into words, even if spaces are repeated.
 
-  jwt.verify(token, jwtSecret, (error, decoded) => {
-    if (error || !decoded || typeof decoded !== "object" || !("id" in decoded)) {
-      return res.status(401).json({ message: "Invalid token" });
-    }
+  if (parts.length !== 2 || parts[0].toLowerCase() !== "bearer" || !parts[1]) { // Require exactly "Bearer" and one token.
 
-    req.userId = decoded.id as string | number;
-    next();
-  });
-}
+    res.status(401).json({ message: "Invalid authorization header format" }); // Explain that the header is not in the expected format.
+    return; // Do not continue with a badly formatted header.
+  } // Finish checking the header format.
 
-export default authMiddleware;
+  const token = parts[1]; // Keep the token part for verification.
+  const jwtSecret = process.env.JWT_SECRET; // Read the secret used to sign trusted tokens.
+
+  if (!jwtSecret) { // Stop if the server has no secret configured.
+
+    console.error("JWT_SECRET is missing from environment variables"); // Record the setup problem for the server owner.
+
+    res.status(500).json({ message: "Server configuration error" }); // Give the user a general server error.
+
+    return; // Do not try to verify a token without a secret.
+  } // Finish checking the secret.
+
+  let decoded: string | jwt.JwtPayload; // Store the verified token data or its plain-text form.
+
+  try { // Catch problems that happen while checking the token.
+    decoded = jwt.verify(token, jwtSecret, { algorithms: ["HS256"] }); // Accept only tokens signed with HS256.
+
+  } catch (error) { // Handle expired and otherwise invalid tokens separately.
+    if (error instanceof jwt.TokenExpiredError) { // Check whether the token passed its expiry time.
+
+      res.status(401).json({ message: "Token expired" }); // Tell the user they need a fresh token.
+
+      return; // Stop after sending the expiry response.
+    } // Finish checking for an expired token.
+
+    res.status(401).json({ message: "Invalid token" }); // Reject tokens that are damaged or not trusted.
+
+    return; // Do not continue to the route.
+  } // Finish token verification.
+
+  if (typeof decoded === "string") { // A plain-text token does not contain the user ID we need.
+
+    res.status(401).json({ message: "Invalid token payload" }); // Reject a token without an object payload.
+
+    return; // Do not continue without a user ID.
+  } // Finish checking the token payload type.
+
+  const userId = decoded.id; // Read the user ID saved in the token.
+
+  if (typeof userId !== "string" && typeof userId !== "number") { // Make sure the ID is a simple string or number.
+
+    res.status(401).json({ message: "Invalid token payload" }); // Reject a missing or unusable user ID.
+    
+    return; // Do not continue with an invalid user ID.
+  } // Finish checking the user ID.
+
+  req.userId = userId; // Save the checked ID so the route can use it.
+  next(); // Allow the request to continue to its route.
+} // Finish the authentication middleware.
+
+export default authMiddleware; // Make the middleware available to the routes.
