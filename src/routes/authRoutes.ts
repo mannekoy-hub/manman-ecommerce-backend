@@ -40,10 +40,11 @@ router.post("/register", async (req, res) => {
      if(error?.code === "P2002"){
      return res.status(409).json({message: "Username already taken"});
   }
-  console.error(error instanceof error ? error.message : error);
+  console.error(error instanceof Error ? error.message : error);
   res.sendStatus(500);
 }
 });
+
 
 
 router.post("/login", async (req, res) => {
