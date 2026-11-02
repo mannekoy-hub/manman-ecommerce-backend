@@ -6,76 +6,68 @@ import prisma from "../lib/prismaClient.ts";
 const prismaClient = prisma as any;
 const router = express.Router();
 
-// Register a new user endpoint (/auth/register)
-router.post("/register", async (req, res) => {
-  const { username, password } = req.body;
+const JWT_SECRET = process.env.JWT_SECRET;
+if(!JWT_SECRET) throw new Error("JWT_SECRET is not set");
 
-  //encrypt the password
-  const hashedPassword = bcrypt.hashSync(password, 8);
-
-  //save the new user and  hashed password to the db
-  try {
-    const user = await prismaClient.user.create({
-      data: {
-        username,
-        password: hashedPassword,
-      },
-    });
-
-    // now  that we have the user, I want to add their first todo for them
-    let defaultTodo = `HEllo :) Add your first todo!`;
-    await prismaClient.todo.create({
-      data: {
-        task: defaultTodo,
-        userId: user.id,
-      },
-    });
 
     //create a token
-    const token = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: "24h" },
-    );
-    res.json({ token });
-  } catch (error) {
-    console.log(error.message);
-    res.sendStatus(503);
+const signToken = (id: number | string ) =>
+  jwt.sign({id}, JWT_SECRET, {expiresIn: "24h"});
+
+// Register a new user endpoint (/auth/register)
+router.post("/register", async (req, res) => {
+  const username = req.body?.username?.trim().toLowerCase();
+  const password = req.body?.password;
+
+  if(!username || typeof password !== "string" || password.length < 8){
+    return res
+     .status(400).json({message: "Username and a passwrod of 8+ characters required"});
   }
 
-  //res.sendStatus(201);
+  //encrypt the password
+  try{
+     const hashedPassword =  await bcrypt.hash(password, 10);
+
+     const user = await prisma.user.create({
+      data:{
+        username,
+        password: hashedPassword,
+      }
+     });
+     res.status(201).json({token: signToken(user.id)});
+  }
+  catch(error: any){
+     if(error?.code === "P2002"){
+     return res.status(409).json({message: "Username already taken"});
+  }
+  console.error(error instanceof error ? error.message : error);
+  res.sendStatus(500);
+}
 });
 
+
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+   const username = req.body?.username?.trim().toLowerCase();
+   const password = req.body?.password;
 
-  try {
-    const user = await prismaClient.user.findUnique({
-      where: {
-        username: username,
-      },
-    });
+   if(!username || typeof password !== "string"){
+    return res.status(400).json({ message: "Username and password required"});
+   }
 
-    // if  we cannot find the user associated with that username, return out from the function
-    if (!user) {
-      return res.status(404).send({ message: "User not found" });
-    }
+   try{
+    const user = await prisma.user.findUnique({ where: {username}});
+    const valid = user && (await bcrypt.compare(password, user.password));
+   
+   if(!user || !valid){
+    return res.status(401).json({message: "Invalid credentials"});
+   }
 
-    const passwordIsValid = bcrypt.compareSync(password, user.password);
-    // if the password does not match, return out of the function
-    if (!passwordIsValid) {
-      return res.status(401).send({ message: "Invalid password" });
-    }
-    console.log(user);
-    // we have a succesfull authentication
-
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "24h",
-    });
-    res.send({ token });
-  } catch (error) {
-    console.log(error.message);
-    res.sendStatus(503);
+   res.json({token: signToken(user.id)});
+   
+  }
+  catch(error){
+    console.error(error instanceof Error ? error.message : error);
+    res.sendStatus(500);
   }
 });
 
