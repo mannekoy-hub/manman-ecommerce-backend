@@ -125,8 +125,9 @@ router.get(
 //==========================================================####################
 
 //==========================================================####################
-// PATCH /products/:id/image: attach or replace the image of an existing product
 
+
+// PATCH /products/:id/image: attach or replace the image of an existing product
 router.patch(
   "/:id/image",
   upload.single("image"),
