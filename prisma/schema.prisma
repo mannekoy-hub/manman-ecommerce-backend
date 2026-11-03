@@ -14,9 +14,15 @@ model categories {
 
 model User {
   id       Int    @id @default(autoincrement())
+  email    String @unique
   username String @unique
-  password String
+  picture  String?
+  googleId String? @unique @map("google_id")
+  password String?
+  createAt DateTime @default(now()) @map("created_at")
   todos    Todo[]
+
+  @@map("users")
 }
 
 model Todo {
@@ -36,7 +42,7 @@ model products {
   price          Decimal     @db.Decimal(10, 2)
   stock_quantity Int         @default(0)
   image_data     Bytes?
-  image_type     String?     @db.VarChar(50)
+  image_type     String?     @db.VarChar(200)
   category_id    Int?
   created_at     DateTime    @default(now()) @db.Timestamptz(6)
   categories     categories? @relation(fields: [category_id], references: [id], onUpdate: NoAction)
