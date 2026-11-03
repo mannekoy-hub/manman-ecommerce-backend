@@ -2,12 +2,18 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "../lib/prismaClient.ts";
+import { OAuth2Client } from "google-auth-library";
+
 
 const prismaClient = prisma as any;
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClient = new OAuth2Client(googleClientId ?? "");
+
 if(!JWT_SECRET) throw new Error("JWT_SECRET is not set");
+if(!googleClientId) throw new Error("GOOGLE_CLIENT_ID is not set");
 
 
     //create a token
@@ -17,36 +23,45 @@ const signToken = (id: number | string ) =>
 // Register a new user endpoint (/auth/register)
 router.post("/register", async (req, res) => {
   const username = req.body?.username?.trim().toLowerCase();
+  const email = req.body?.email?.trim().toLowerCase();
   const password = req.body?.password;
 
-  if(!username || typeof password !== "string" || password.length < 8){
-    return res
-     .status(400).json({message: "Username and a passwrod of 8+ characters required"});
+  if (
+    !username ||
+    typeof email !== "string" ||
+    !email.includes("@") ||
+    typeof password !== "string" ||
+    password.length < 8
+  ) {
+    return res.status(400).json({
+      message: "Username, a valid email, and a password of 8+ characters are required",
+    });
   }
 
-  //encrypt the password
-  try{
-     const hashedPassword =  await bcrypt.hash(password, 10);
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-     const user = await prisma.user.create({
-      data:{
+    const user = await prisma.user.create({
+      data: {
         username,
+        email,
         password: hashedPassword,
-      }
-     });
-     res.status(201).json({token: signToken(user.id)});
+      },
+    });
+
+    res.status(201).json({ token: signToken(user.id) });
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      return res.status(409).json({ message: "Username or email already taken" });
+    }
+
+    console.error(error instanceof Error ? error.message : error);
+    res.sendStatus(500);
   }
-  catch(error: any){
-     if(error?.code === "P2002"){
-     return res.status(409).json({message: "Username already taken"});
-  }
-  console.error(error instanceof Error ? error.message : error);
-  res.sendStatus(500);
-}
 });
 
 
-
+//Login
 router.post("/login", async (req, res) => {
    const username = req.body?.username?.trim().toLowerCase();
    const password = req.body?.password;
@@ -69,6 +84,83 @@ router.post("/login", async (req, res) => {
   catch(error){
     console.error(error instanceof Error ? error.message : error);
     res.sendStatus(500);
+  }
+});
+
+//====#######################========Google login sign up==================###################
+
+// Makes a unique username from the email, e.g. "john" or "john4821"
+async function generateUsername(email: string): Promise<string> {
+  const base =
+    email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase() || "user";
+  let username = base;
+
+  while (await prisma.user.findUnique({ where: { username } })) {
+    username = `${base}${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+  return username;
+}
+
+router.post("/google", async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ error: "Missing credential" });
+    }
+
+    // 1. Verify the token with Google
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: googleClientId,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload?.email || !payload.email_verified) {
+      return res.status(401).json({ error: "Google email not verified" });
+    }
+
+    const userEmail = payload.email;
+
+    // 2. Find or create the user
+    let user = await prisma.user.findUnique({ where: { email: userEmail } });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: userEmail,
+          username: await generateUsername(userEmail),
+          picture: payload.picture ?? null,
+          googleId: payload.sub,
+        },
+      });
+    } else if (!user.googleId) {
+      // existing email/password user: link their Google account
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId: payload.sub,
+          picture: payload.picture ?? user.picture,
+        },
+      });
+    }
+
+    // 3. Issue your own JWT
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        picture: user.picture,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(401).json({ error: "Invalid Google token" });
   }
 });
 
