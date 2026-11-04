@@ -20,10 +20,10 @@ if(!googleClientId) throw new Error("GOOGLE_CLIENT_ID is not set");
 const signToken = (id: number | string ) =>
   jwt.sign({id}, JWT_SECRET, {expiresIn: "24h"});
 
-// Register a new user endpoint (/auth/register)
+//=================== Register a new user endpoint (/auth/register)=================//
 router.post("/register", async (req, res) => {
-  const username = req.body?.username?.trim().toLowerCase();
-  const email = req.body?.email?.trim().toLowerCase();
+  const username = typeof req.body?.username === "string"? req.body.username.trim().toLowerCase() : "";
+  const email = typeof req.body?.email === "string"? req.body.email.trim().toLowerCase() : "";
   const password = req.body?.password;
 
   if (
@@ -61,9 +61,9 @@ router.post("/register", async (req, res) => {
 });
 
 
-//Login
+//============Login================================================#######
 router.post("/login", async (req, res) => {
-   const username = req.body?.username?.trim().toLowerCase();
+   const username = typeof req.body?.username === "string"? req.body.username.trim().toLowerCase() : "";
    const password = req.body?.password;
 
    if(!username || typeof password !== "string"){
@@ -72,7 +72,7 @@ router.post("/login", async (req, res) => {
 
    try{
     const user = await prisma.user.findUnique({ where: {username}});
-    const valid = user && (await bcrypt.compare(password, user.password));
+    const valid = !!user?.password && (await bcrypt.compare(password, user.password));
    
    if(!user || !valid){
     return res.status(401).json({message: "Invalid credentials"});
@@ -119,7 +119,7 @@ router.post("/google", async (req, res) => {
       return res.status(401).json({ error: "Google email not verified" });
     }
 
-    const userEmail = payload.email;
+    const userEmail = payload.email.toLocaleLowerCase();
 
     // 2. Find or create the user
     let user = await prisma.user.findUnique({ where: { email: userEmail } });
@@ -145,9 +145,7 @@ router.post("/google", async (req, res) => {
     }
 
     // 3. Issue your own JWT
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const token = signToken(user.id);
 
     res.json({
       token,
