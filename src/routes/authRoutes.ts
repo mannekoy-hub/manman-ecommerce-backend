@@ -59,6 +59,9 @@ router.post("/register", async (req, res) => {
     res.sendStatus(500);
   }
 });
+//=================================================================================//
+
+
 
 
 //============Login================================================#######
@@ -86,9 +89,12 @@ router.post("/login", async (req, res) => {
     res.sendStatus(500);
   }
 });
+//================================================================================//
 
-//====#######################========Google login sign up==================###################
 
+
+
+//========Username generator=========================================############
 // Makes a unique username from the email, e.g. "john" or "john4821"
 async function generateUsername(email: string): Promise<string> {
   const base =
@@ -100,7 +106,12 @@ async function generateUsername(email: string): Promise<string> {
   }
   return username;
 }
+//====================================================================#############
 
+
+
+
+//===============================Google Route==================###################
 router.post("/google", async (req, res) => {
   try {
     const { credential } = req.body;
@@ -119,7 +130,7 @@ router.post("/google", async (req, res) => {
       return res.status(401).json({ error: "Google email not verified" });
     }
 
-    const userEmail = payload.email.toLocaleLowerCase();
+    const userEmail = payload.email.toLocaleLowerCase();//diri ko na strop
 
     // 2. Find or create the user
     let user = await prisma.user.findUnique({ where: { email: userEmail } });
