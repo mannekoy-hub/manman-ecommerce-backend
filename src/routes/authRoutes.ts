@@ -124,13 +124,13 @@ router.post("/google", async (req, res) => {
       idToken: credential,
       audience: googleClientId,
     });
-    const payload = ticket.getPayload();
+    const payload = ticket.getPayload();//Opens and read what's inside the token. They holds things like email, email_verified, picture, and sub(google unique ID).
 
     if (!payload?.email || !payload.email_verified) {
       return res.status(401).json({ error: "Google email not verified" });
     }
 
-    const userEmail = payload.email.toLocaleLowerCase();//diri ko na strop
+    const userEmail = payload.email.toLocaleLowerCase();
 
     // 2. Find or create the user
     let user = await prisma.user.findUnique({ where: { email: userEmail } });
