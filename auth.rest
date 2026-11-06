@@ -1,0 +1,21 @@
+@baseUrl = http://localhost:5010
+
+###GET THE USER
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+    "username": "Manekoy",
+    "email": "Manekoy@gmail.com",
+    "password": "987654321"
+}
+
+
+### Test the login
+POST  {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "username": "Manekoy",
+    "password": "987654321"
+}
