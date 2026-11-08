@@ -25,6 +25,7 @@ router.post("/register", async (req, res) => {
   const username = typeof req.body?.username === "string"? req.body.username.trim().toLowerCase() : "";
   const email = typeof req.body?.email === "string"? req.body.email.trim().toLowerCase() : "";
   const password = req.body?.password;
+  const confirmPassword = req.body?.confirmPassword;
 
   if (
     !username ||
@@ -37,6 +38,10 @@ router.post("/register", async (req, res) => {
       message: "Username, a valid email, and a password of 8+ characters are required",
     });
   }
+
+  if (password !== confirmPassword) {
+  return res.status(400).json({ message: "Passwords do not match" });
+}
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
