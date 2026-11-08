@@ -5,9 +5,10 @@ POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
 {
-    "username": "Manekoy",
-    "email": "Manekoy@gmail.com",
-    "password": "987654321"
+    "username": "koyyy",
+    "email": "koyyy@gmail.com",
+    "password": "2334455667",
+    "confirmPassword": "2334455667"
 }
 
 
@@ -16,6 +17,6 @@ POST  {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-    "username": "Manekoy",
-    "password": "987654321"
+    "username": "koyyy",
+    "password": "2334455667"
 }
