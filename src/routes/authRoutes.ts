@@ -54,7 +54,10 @@ router.post("/register", async (req, res) => {
       },
     });
 
-    res.status(201).json({ token: signToken(user.id) });
+   res.status(201).json({
+  token: signToken(user.id),
+  user: { id: user.id, email: user.email, username: user.username, picture: user.picture },
+});
   } catch (error: any) {
     if (error?.code === "P2002") {
       return res.status(409).json({ message: "Username or email already taken" });
@@ -86,7 +89,10 @@ router.post("/login", async (req, res) => {
     return res.status(401).json({message: "Invalid credentials"});
    }
 
-   res.json({token: signToken(user.id)});
+  res.json({
+  token: signToken(user.id),
+  user: { id: user.id, email: user.email, username: user.username, picture: user.picture },
+});
    
   }
   catch(error){
