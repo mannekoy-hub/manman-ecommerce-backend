@@ -10,7 +10,7 @@ import productRoutes from "./routes/productRoutes.ts";
 const app = express();
 const PORT = Number(process.env.PORT) || 5010;
 
-app.use(cors());        
+app.use(cors({ origin: "http://localhost:5173" }));        
 app.use(express.json()); 
 
 app.use("/auth", authRoutes);
