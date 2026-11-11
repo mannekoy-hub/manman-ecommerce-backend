@@ -74,15 +74,15 @@ router.post("/register", async (req, res) => {
 
 //============Login================================================#######
 router.post("/login", async (req, res) => {
-   const username = typeof req.body?.username === "string"? req.body.username.trim().toLowerCase() : "";
+   const email = typeof req.body?.email === "string"? req.body.email.trim().toLowerCase() : "";
    const password = req.body?.password;
 
-   if(!username || typeof password !== "string"){
-    return res.status(400).json({ message: "Username and password required"});
+   if(!email || typeof password !== "string"){
+    return res.status(400).json({ message: "Email and password required"});
    }
 
    try{
-    const user = await prisma.user.findUnique({ where: {username}});
+    const user = await prisma.user.findUnique({ where: {email}});
     const valid = !!user?.password && (await bcrypt.compare(password, user.password));
    
    if(!user || !valid){
