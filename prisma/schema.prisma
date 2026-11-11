@@ -1,3 +1,7 @@
+///npx prisma format.
+///npx prisma db push.
+///npx prisma generate.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,14 +17,15 @@ model categories {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  username String @unique
+  id       Int      @id @default(autoincrement())
+  email    String   @unique
+  username String   @unique
   picture  String?
-  googleId String? @unique @map("google_id")
+  googleId String?  @unique @map("google_id")
   password String?
   createAt DateTime @default(now()) @map("created_at")
   todos    Todo[]
+  order    Order[]
 
   @@map("users")
 }
@@ -46,10 +51,64 @@ model products {
   category_id    Int?
   created_at     DateTime    @default(now()) @db.Timestamptz(6)
   categories     categories? @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+  orderItems     OrderItem[]
 }
 
 /// Admin Role
 enum Role {
   USER
   ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+}
+
+model Order {
+  id            Int           @id @default(autoincrement())
+  userId        Int           @map("user_id")
+  status        OrderStatus   @default(PENDING)
+  paymentMethod PaymentMethod @default(COD) @map("payment_method")
+
+  subtotal    Decimal @db.Decimal(10, 2)
+  deliveryFee Decimal @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  total       Decimal @db.Decimal(10, 2)
+
+  fullName   String  @map("full_name")
+  phone      String
+  street     String
+  barangay   String
+  city       String
+  province   String
+  postalCode String  @map("postal_code")
+  notes      String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int     @map("order_id")
+  productId Int     @map("product_id")
+  name      String // snapshot of the product name
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2) // snapshot of the price
+  quantity  Int
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product products @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
 }
