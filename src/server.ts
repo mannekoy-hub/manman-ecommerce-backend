@@ -6,6 +6,8 @@ import { errorHandler } from "./errorHandler/errorHandler.ts";
 import authRoutes from "./routes/authRoutes.ts";
 import todoRoutes from "./routes/todoRoutes.ts";
 import productRoutes from "./routes/productRoutes.ts";
+import orderRoutes from "./routes/orderRoutes.ts";
+
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5010;
@@ -16,6 +18,7 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/todos", todoRoutes);
 app.use("/products", productRoutes);
+app.use("/order", orderRoutes);
 app.use(errorHandler);
 
 app.listen(PORT, () => {
