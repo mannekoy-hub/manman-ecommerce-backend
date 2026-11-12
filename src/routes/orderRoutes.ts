@@ -38,7 +38,7 @@ function toOrderResponse(order: any) {
       postalCode: order.postalCode,
       notes: order.notes,
     },
-    items: order.items.map((item: any) => ({
+    items: order.items.map((item: any) => ({//.map goes through every bought item and makes a smaller version of each. It keeps productId, name, unitPrice, and quantity.
       productId: item.productId,
       name: item.name,
       unitPrice: Number(item.unitPrice),
@@ -95,6 +95,8 @@ router.post("/", authMiddleware, async (req, res) => {
   if (!PHONE_RE.test(address.phone)) {
     return res.status(400).json({ message: "Please enter a valid phone number" });
   }
+
+  //dito nag stop
 
   try {
     // 3. Everything below succeeds together or not at all
